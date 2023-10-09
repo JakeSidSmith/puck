@@ -1,11 +1,58 @@
-import { CSSProperties, ReactNode, SyntheticEvent, useEffect } from "react";
-import { Draggable } from "react-beautiful-dnd";
+import {
+  CSSProperties,
+  MouseEventHandler,
+  ReactNode,
+  SyntheticEvent,
+  useEffect,
+} from "react";
+import { Draggable, DraggableProvided } from "react-beautiful-dnd";
 import styles from "./styles.module.css";
 import getClassNameFactory from "../../lib/get-class-name-factory";
 import { Copy, Trash } from "react-feather";
 import { useModifierHeld } from "../../lib/use-modifier-held";
+import { createPortal } from "react-dom";
 
 const getClassName = getClassNameFactory("DraggableComponent", styles);
+
+interface PortalItemProps {
+  provided: DraggableProvided;
+  isDragging: boolean;
+  innerRef: (element: HTMLElement | null) => void;
+  children?: ReactNode | readonly ReactNode[];
+  className?: string;
+  style?: CSSProperties;
+  onMouseOver?: MouseEventHandler<HTMLDivElement>;
+  onMouseOut?: MouseEventHandler<HTMLDivElement>;
+  onClick?: MouseEventHandler<HTMLDivElement>;
+}
+
+const portalElement = document.createElement("div");
+document.body.appendChild(portalElement);
+
+const PortalItem = ({
+  provided,
+  innerRef,
+  isDragging,
+  children,
+  ...props
+}: PortalItemProps) => {
+  const node = (
+    <div
+      ref={innerRef}
+      {...provided.draggableProps}
+      {...provided.dragHandleProps}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+
+  if (isDragging) {
+    return createPortal(node, portalElement);
+  }
+
+  return node;
+};
 
 export const DraggableComponent = ({
   children,
@@ -56,10 +103,10 @@ export const DraggableComponent = ({
       isDragDisabled={isDragDisabled}
     >
       {(provided, snapshot) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.draggableProps}
-          {...provided.dragHandleProps}
+        <PortalItem
+          provided={provided}
+          innerRef={provided.innerRef}
+          isDragging={snapshot.isDragging}
           className={getClassName({
             isSelected,
             isModifierHeld,
@@ -92,7 +139,7 @@ export const DraggableComponent = ({
             </div>
           </div>
           <div className={getClassName("contents")}>{children}</div>
-        </div>
+        </PortalItem>
       )}
     </Draggable>
   );
